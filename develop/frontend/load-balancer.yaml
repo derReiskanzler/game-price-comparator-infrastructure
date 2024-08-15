@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fe-angular-game-price-comparator-develop-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: fe-angular-game-price-comparator-develop
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

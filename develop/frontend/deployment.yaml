@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fe-angular-game-price-comparator-develop-deployment
+  labels:
+    app: fe-angular-game-price-comparator-develop
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: fe-angular-game-price-comparator-develop
+  template:
+    metadata:
+      labels:
+        app: fe-angular-game-price-comparator-develop
+    spec:
+      containers:
+        - name: fe-angular-game-price-comparator-develop
+          image: 'docker.io/derreiskanzler/fe-angular-game-price-comparator-develop:latest'
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
