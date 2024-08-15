@@ -1,0 +1,17 @@
+apiVersion: 'networking.k8s.io/v1'
+kind: 'Ingress'
+metadata:
+  name: be-java-game-price-comparator-develop-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: be-java-game-price-comparator.develop.nip.io
+      http:
+        paths:
+          - pathType: Prefix
+            path: '/'
+            backend:
+              service:
+                name: be-java-game-price-comparator-develop-service
+                port:
+                  number: 80
