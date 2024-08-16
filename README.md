@@ -90,7 +90,7 @@ kubectl apply -n <environment> --filename ./postgres-config.yaml
 # After creating yaml-file with your credentials
 kubectl apply -n <environment> --filename ./postgres-secret.yaml
 # To be able to use secrets from .env you need to create them
-kubectl create secret generic game-price-comparator-secret -n <environment> --from-env-file=.env
+kubectl create secret generic be-java-game-price-comparator-<production/staging/develop>-secret -n <environment> --from-env-file=.env
 ```
 
 4. Start Postgres and Backend using next commands:
