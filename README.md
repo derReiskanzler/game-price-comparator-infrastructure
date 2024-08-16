@@ -11,7 +11,7 @@ minikube start \
     --cpus=2 --memory=4096m \
     --container-runtime=cri-o \
     --driver=docker \
-    --addons=ingress \
+    --addons=ingress
 ```
 
 2. Watch pods, services & ingress (run in seprate terminals).
