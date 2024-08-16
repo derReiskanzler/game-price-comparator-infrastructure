@@ -49,7 +49,7 @@ minikube tunnel
 curl --resolve "fe-angular-game-price-comparator-develop.nip.io:80:127.0.0.1" -i http://fe-angular-game-price-comparator-develop.nip.io
 ```
 
-#### Backend
+### Backend
 
 0. In folder `./[develop,staging,production]/backend` can be found next yaml-files:
    1. postgres.yaml - contains PersistentVolumeClaim, Deployment and Service for postgres. 
@@ -77,11 +77,12 @@ Change current context by using next command:
 ``` bash
 kubectl config set-context --current --namespace=<environment>
 ```
-### Environment variables for backend
+#### Environment variables for backend
 To use environment variables for backend you need to use .env.template as a template: 
-    - Write your URL and credentials to connect database for PostgresDB. By default, url is "localhost" and port is "5432".
-    - Add your gmail in MAIL_PROVIDER_USERNAME and App-password from google in MAIL_PROVIDER_PASSWORD: Google-Account -> Security -> 2-Factor Authentication -> App Passwords. To use a different mail provider, you must change the host in spring.mail.host
-    - Add secret key for jwt. To generate this key you can use such sites like [www.browserling.com](https://www.browserling.com/tools/random-hex)
+    
+- Write your URL and credentials to connect database for PostgresDB. By default, url is "localhost" and port is "5432".
+- Add your gmail in MAIL_PROVIDER_USERNAME and App-password from google in MAIL_PROVIDER_PASSWORD: Google-Account -> Security -> 2-Factor Authentication -> App Passwords. To use a different mail provider, you must change the host in spring.mail.host
+- Add secret key for jwt. To generate this key you can use such sites like [www.browserling.com](https://www.browserling.com/tools/random-hex)
 
 3. Apply Configurations and Secrets using next commands:
 ``` bash
