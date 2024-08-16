@@ -49,7 +49,7 @@ minikube tunnel
 curl --resolve "fe-angular-game-price-comparator-develop.nip.io:80:127.0.0.1" -i http://fe-angular-game-price-comparator-develop.nip.io
 ```
 
-### Backend
+#### Backend
 
 0. In folder `./[develop,staging,production]/backend` can be found next yaml-files:
    1. postgres.yaml - contains PersistentVolumeClaim, Deployment and Service for postgres. 
