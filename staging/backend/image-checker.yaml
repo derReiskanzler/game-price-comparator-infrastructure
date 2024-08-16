@@ -44,7 +44,7 @@ spec:
                   apt install -y curl
                   DEPLOYMENT_NAME=be-java-game-price-comparator-staging-deployment
                   NAMESPACE="default"
-                  DOCKER_IMAGE="kkkira/game-price-comparator"
+                  DOCKER_IMAGE="kkkira/game-price-comparator-staging"
                   DOCKER_TAG="latest"
                   CURRENT_DIGEST=$(kubectl get pod -l app=be-java-game-price-comparator-staging -o=jsonpath='{.items[0].status.containerStatuses[0].imageID}' | cut -d'@' -f2)
                   LATEST_DIGEST=$(curl -s https://hub.docker.com/v2/repositories/${DOCKER_IMAGE}/tags/${DOCKER_TAG}/ | grep -o '"digest":"[^"]*')

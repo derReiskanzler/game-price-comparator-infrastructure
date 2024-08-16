@@ -25,7 +25,7 @@ spec:
           resources:
             limits:
               cpu: "0.7"
-          image: 'docker.io/kkkira/game-price-comparator:latest'
+          image: 'docker.io/kkkira/game-price-comparator-production:latest'
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
