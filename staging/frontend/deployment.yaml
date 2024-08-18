@@ -22,6 +22,11 @@ spec:
       containers:
         - name: fe-angular-game-price-comparator-staging
           image: 'docker.io/derreiskanzler/fe-angular-game-price-comparator-staging:latest'
+          env:
+            - name: API_BASE_URL
+              value: http://be-java-game-price-comparator.staging.nip.io/api
+            - name: ENV
+              value: staging
           resources:
             limits:
               cpu: 500m
