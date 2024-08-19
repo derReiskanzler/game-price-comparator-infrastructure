@@ -38,6 +38,8 @@ spec:
                 configMapKeyRef:
                   name: postgres-config
                   key: postgres-url
+            - name: FRONTEND_URL
+              value: http://fe-angular-game-price-comparator.develop.nip.io
           readinessProbe:
             httpGet:
               path: /api/v1/health

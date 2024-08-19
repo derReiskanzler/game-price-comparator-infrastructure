@@ -98,12 +98,13 @@ kubectl create secret generic be-java-game-price-comparator-<production/staging/
 ``` bash
 kubectl apply -n <environment> --filename ./postgres.yaml
 kubectl apply -n <environment> --filename ./backend.yaml
+kubectl apply -n <environment> --filename ./ingress.yaml
 ```
 
 5. To available image-checking update use next command for each service (frontend & backend):
 
 ``` bash
-kubectl apply -n <environment> --filename ./ingress-check.yaml
+kubectl apply -n <environment> --filename ./image-check.yaml
 ```
 
 6. To stop service and delete everything use next command:
