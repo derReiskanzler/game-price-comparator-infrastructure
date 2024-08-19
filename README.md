@@ -116,3 +116,16 @@ kubectl delete --all deployments -n <environment>
 kubectl delete --all secrets -n <environment>
 kubectl delete --all configmaps -n <environment>
 ```
+
+
+### Terraform and Cloud
+
+``` bash
+tofu apply -var 'sshPublicKeyPath=./.ssh/operator.pub'
+tofu output 'instanceIPv4'
+```
+
+Delete instance
+``` bash
+tofu destroy
+```
