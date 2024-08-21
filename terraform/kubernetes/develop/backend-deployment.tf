@@ -1,4 +1,5 @@
 resource "kubernetes_deployment" "be_java_game_price_comparator_develop_deployment" {
+  depends_on = [kubernetes_service.postgres_service]
   metadata {
     name = "be-java-game-price-comparator-develop-deployment"
 
@@ -88,6 +89,7 @@ resource "kubernetes_deployment" "be_java_game_price_comparator_develop_deployme
 }
 
 resource "kubernetes_service" "be_java_game_price_comparator_develop_service" {
+  depends_on = [kubernetes_service.postgres_service]
   metadata {
     name = "be-java-game-price-comparator-develop-service"
   }

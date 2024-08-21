@@ -13,6 +13,6 @@ resource "kubernetes_secret" "be-java-game-price-comparator-develop-secret" {
   }
 
   data = {
-    for key, value in local.env_vars : key => base64encode(value)
+    for key, value in local.env_vars : key => value
   }
 }
