@@ -1,5 +1,8 @@
 # Game Price Comparator Infrastructure
 
+#### [Backend Repo](https://github.com/kirdreamer/GamePriceComparator)
+#### [Frontend Repo](https://github.com/derReiskanzler/fe-angular-game-price-comparator)
+
 ## Local with minikube
 
 ### Frontend
@@ -122,8 +125,8 @@ kubectl delete --all configmaps -n <environment>
 ### Terraform and Cloud
 
 ``` bash
-tofu apply -var 'sshPublicKeyPath=./.ssh/operator.pub'
-tofu output 'instanceIPv4'
+tofu init
+tofu apply -var 'sshPublicKeyPath=~/.ssh/operator.pub'
 ```
 
 Delete instance
