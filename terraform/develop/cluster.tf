@@ -11,6 +11,7 @@ resource "aws_instance" "develop_control_plane" {
   key_name                    = aws_key_pair.develop.key_name
   subnet_id                   = aws_subnet.develop.id
   associate_public_ip_address = true
+  availability_zone           = var.availability_zone
 
   # vpc_security_group_ids = [
   #   aws_security_group.allow_inbound_ssh_http_https.id,
@@ -52,7 +53,7 @@ resource "aws_instance" "develop_worker_nodes" {
   key_name                    = aws_key_pair.develop.key_name
   subnet_id                   = aws_subnet.develop.id
   associate_public_ip_address = true
-
+  availability_zone           = var.availability_zone
 
   # vpc_security_group_ids = [
   #   aws_security_group.allow_inbound_ssh_http_https.id,

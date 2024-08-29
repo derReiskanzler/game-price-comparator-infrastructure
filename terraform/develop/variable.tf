@@ -10,6 +10,12 @@ variable "key_name" {
   default     = "develop_aws_key"
 }
 
+variable "availability_zone" {
+  type        = string
+  description = "availability zone"
+  default     = "us-east-1a"
+}
+
 # ARM
 variable "arm_ubuntu_ami" {
   type        = string
