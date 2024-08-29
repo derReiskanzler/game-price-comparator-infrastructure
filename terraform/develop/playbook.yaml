@@ -231,6 +231,22 @@
         group: ubuntu
         mode: "0600"
 
+    - name: Create deployment directory for ubuntu user
+      ansible.builtin.file:
+        path: /home/ubuntu/deployment
+        state: directory
+        mode: "0755"
+        owner: ubuntu
+        group: ubuntu
+
+    # - name: Copy k8 apply script to ubuntu user's home
+    #   ansible.builtin.copy:
+    #     src: ./files/apply.sh
+    #     dest: /home/ubuntu/deployment/apply.sh
+    #     owner: ubuntu
+    #     group: ubuntu
+    #     mode: "700"
+
     # - name: set the correct permission on kubeconfig file
     #   shell: sudo chown $(id -u):$(id -g) $HOME/.kube/config
 

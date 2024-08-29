@@ -253,6 +253,13 @@ To achieve the goal of deploying services on the aws_instance with Terraform, we
 
 Make sure you have a ssh key-pair named `operator` in `/terraform/.ssh`.
 
+Run script:
+```bash
+./terraform/develop/provision.sh
+```
+
+Or step by step.
+
 Infrastructure setup:
 ```bash
 terraform init
