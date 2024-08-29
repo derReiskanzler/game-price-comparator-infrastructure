@@ -57,6 +57,14 @@ resource "aws_security_group" "worker_node_security_group" {
     to_port     = 10250
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  ingress {
+    description = "kube proxy"
+    protocol    = "tcp"
+    from_port   = 10256
+    to_port     = 10256
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   ingress {
     description = "NodePort services"
