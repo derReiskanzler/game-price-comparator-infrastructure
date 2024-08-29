@@ -39,9 +39,9 @@ resource "aws_instance" "develop_control_plane" {
     Role = "Control plane node"
   }
 
-  provisioner "local-exec" {
-    command = "echo 'master ${self.public_ip}' >> ./files/hosts"
-  }
+  # provisioner "local-exec" {
+  #   command = "echo 'master ${self.public_ip}' >> ./files/hosts"
+  # }
 }
 
 resource "aws_instance" "develop_worker_nodes" {
@@ -81,8 +81,8 @@ resource "aws_instance" "develop_worker_nodes" {
     Role = "Worker node"
   }
 
-  provisioner "local-exec" {
-    command = "echo 'worker-${count.index} ${self.public_ip}' >> ./files/hosts"
-  }
+  # provisioner "local-exec" {
+  #   command = "echo 'worker-${count.index} ${self.public_ip}' >> ./files/hosts"
+  # }
 
 }
