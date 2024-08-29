@@ -8,8 +8,9 @@ The Game Price Comparator Infrastructure makes use of docker images published re
     - [Setup](#setup)
         - [Problems with Minikube on Unix-OS](#problems-with-minikube-on-unix-os)
     - [Stop](#stop)
-2. [Local Setup with OpenTofu and Minikube](#local-setup-with-opentofu-and-minikube)
+2. [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)
     - [Problems with Minikube on Unix-OS (again)](#problems-with-minikube-on-unix-os-again)
+2. [Remote Setup with Terraform, Ansible and Kubeadm](#remote-setup-with-terraform-ansible-and-kubeadm)
 
 ## Local Setup with minikube
 
@@ -158,7 +159,7 @@ kubectl delete --all configmaps
 kubectl delete [configmap,ingress,service,pod] <name>
 ```
 
-## Local Setup with OpenTofu and Minikube
+## Local Setup with Terraform and Minikube
 
 Start minikube:
 ``` bash
@@ -169,15 +170,15 @@ minikube start \
     --addons=ingress
 ```
 
-Spin up tofu:
+Spin up terraform:
 ``` bash
-tofu init
-tofu apply
+terraform init
+terraform apply
 ```
 
 Delete ressources:
 ``` bash
-tofu destroy
+terraform destroy
 ```
 
 ### Problems with Minikube on Unix-OS (again)
@@ -212,7 +213,7 @@ env {
 
 Reapply change:
 ```bash
-tofu apply
+terraform apply
 ```
 
 ### Problems with AWS Cloud
@@ -246,3 +247,65 @@ sudo minikube start --driver=none
 ```
 
 To achieve the goal of deploying services on the aws_instance with Terraform, we needed a more efficient machine. Therefore, we've decided to deploy everything locally with all problems with Minikube on Unix-OS.
+
+
+### Remote Setup with Terraform, Ansible and Kubeadm
+
+Make sure you have a ssh key-pair named `operator` in `/terraform/.ssh`.
+
+Infrastructure setup:
+```bash
+terraform init
+terraform apply # optionally run with --auto-approve
+```
+
+Check if you can connect to the control plane:
+```bash
+ssh -i ../.ssh/operator -l ubuntu $(terraform output -raw 'control_plane_ipv4')
+```
+
+Make sure you have terraform installed as this setup uses a plugin to [provide ansible for terraform](https://www.ansible.com/blog/providing-terraform-with-that-ansible-magic/). The plugin can be used in the inventory.yaml but needs to be installed from [this site](https://galaxy.ansible.com/ui/repo/published/cloud/terraform/) and shows following command to run:
+```bash
+ansible-galaxy collection install cloud.terraform
+```
+
+It enables the hosts file (that is saved in the terraform state) to be accessible for ansible in order to create a dynamic hosts file. To check if it worked run:
+```bash
+ansible-inventory -i inventory.yaml --graph
+
+# Expected output something like:
+@all:
+  |--@ungrouped:
+  |--@master:
+  |  |--control_plane
+  |--@workers:
+  |  |--worker-0
+  |  |--worker-1
+```
+
+To run the playbook:
+```bash
+ansible-playbook -i inventory.yaml playbook.yaml --ask-become-pass
+```
+
+The flag `--ask-become-pass` asks for your sudo password that is used on your local machine so it can create and execute commands on the remote host machines.
+
+Check kube config file and look for server property e.g. `server: https://[master-ip]` and check if it matches the master-ip (check master-ip in files/hosts). Then set that config as default by exporting the path to the file as the KUBECONFIG-Variable
+```bash
+# Print
+cat /tmp/kubeconfig/config
+
+# Overwrites kubeconfig on your machine with remote config that has been saved on your machine after running the playbook (only temporarily - resets as soon as you destroy everything)
+export KUBECONFIG=/tmp/kubeconfig/config
+
+# Check applied config
+kubectl config view
+
+# Check if you have access to the remote cluster that you created
+kubectl get nodes
+# Or
+kubectl get pods -A
+```
+
+#### Notes
+If there are problems, destroy everything and remove everything in the `/file/hosts`.
