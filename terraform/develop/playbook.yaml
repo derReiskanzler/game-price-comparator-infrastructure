@@ -28,17 +28,25 @@
         name: "{{ node_hostname }}"
 
 # each machine copies and gets updates /etc/hosts so they know each other
-    - name: Copy /etc/hosts template
-      ansible.builtin.copy:
-        backup: true
-        src: ./files/hosts
-        dest: /tmp/hosts
-
-    - name: Insert/Update configuration using a local file and validate it
-      ansible.builtin.blockinfile:
-        block: "{{ lookup('file', './files/hosts') }}"
+    - name: Add IP to /etc/hosts in all nodes
+      lineinfile:
         path: /etc/hosts
+        line: "{{ hostvars[item]['ansible_host'] }} {{ hostvars[item]['inventory_hostname'] }}"
+        state: present
         backup: yes
+      loop: "{{ groups['all'] }}"
+    
+    # - name: Copy /etc/hosts template
+    #   ansible.builtin.copy:
+    #     backup: true
+    #     src: ./files/hosts
+    #     dest: /tmp/hosts
+
+    # - name: Insert/Update configuration using a local file and validate it
+    #   ansible.builtin.blockinfile:
+    #     block: "{{ lookup('file', './files/hosts') }}"
+    #     path: /etc/hosts
+    #     backup: yes
 
 # Why disable swap? - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#before-you-begin
     - name: Disable swap on all nodes
