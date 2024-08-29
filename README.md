@@ -302,10 +302,13 @@ export KUBECONFIG=/tmp/kubeconfig/config
 kubectl config view
 
 # Check if you have access to the remote cluster that you created
-kubectl get nodes
-# Or
-kubectl get pods -A
-```
+kubectl get pods --all-namespaces
+# Or 
+kubectl get all --all-namespaces
 
-#### Notes
-If there are problems, destroy everything and remove everything in the `/file/hosts`.
+# get all machines
+kubectl get nodes
+
+kubectl cluster-info
+
+```
