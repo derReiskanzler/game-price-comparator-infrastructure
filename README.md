@@ -169,10 +169,18 @@ minikube start \
     --addons=ingress
 ```
 
+Create `.env` in `./terraform/kubernetes/develop` using the `.env.template`.
+
 Spin up tofu:
 ``` bash
+# cd into ./terraform/kubernetes/develop
 tofu init
 tofu apply
+```
+
+Watch apply/creation of pods
+```bash
+watch --exec kubectl get pods --output wide
 ```
 
 Delete ressources:
@@ -188,11 +196,11 @@ To access the Frontend URL locally in the browser, run:
 ```bash
 minikube tunnel
 ```
-
+<!-- 
 And add the Frontend URL to `/etc/hosts`:
 ```
 127.0.0.1 fe-angular-game-price-comparator.<environment>.nip.io
-```
+``` -->
 
 The Frontend application is then accessible at `fe-angular-game-price-comparator.<environment>.nip.io`.
 
@@ -200,6 +208,7 @@ To be CORS compliant with the Backend, we need to get the URL of the exposed Bac
 ```bash
 # Get exposed service url of cluster
 minikube service be-java-game-price-comparator-<environment>-service --url
+minikube service fe-angular-game-price-comparator-<environment>-service --url
 ```
 
 Add in `frontend-deployment.tf` file:
@@ -210,39 +219,17 @@ env {
 }
 ```
 
+Add in `backend-deployment.tf` file:
+```
+env {
+    name  = "API_BASE_URL"
+    value = "<service-url>"
+}
+```
+
 Reapply change:
 ```bash
 tofu apply
 ```
 
-### Problems with AWS Cloud
-
-Virtual machine with more than 2Gi CPU is required to be able to use Kubernetes on the aws.
-
-Firstly, we've tried to install kubernetes on the aws instance manually using minikube and kubelet+kubeadm, but received following errors:
-```log
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-I0825 11:29:59.416029   12189 version.go:256] remote version is much newer: v1.31.0; falling back to: stable-1.30
-[init] Using Kubernetes version: v1.30.4
-[preflight] Running pre-flight checks
-W0825 11:29:59.527174   12189 checks.go:1079] [preflight] WARNING: Couldn't create the interface used for talking to the container runtime: crictl is required by the container runtime: executable file not found in $PATH
-	[WARNING FileExisting-socat]: socat not found in system path
-	[WARNING Service-Kubelet]: kubelet service is not enabled, please run 'systemctl enable kubelet.service'
-error execution phase preflight: [preflight] Some fatal errors occurred:
-	[ERROR NumCPU]: the number of available CPUs 1 is less than the required 2
-	[ERROR Mem]: the system RAM (446 MB) is less than the minimum 1700 MB
-	[ERROR FileExisting-crictl]: crictl not found in system path
-	[ERROR FileExisting-conntrack]: conntrack not found in system path
-[preflight] If you know what you are doing, you can make a check non-fatal with `--ignore-preflight-errors=...`
-To see the stack trace of this error execute with --v=5 or higher
-```
-
-```log
-sudo minikube start --driver=none
-😄  minikube v1.33.1 on Ubuntu 22.04 (xen/amd64)
-✨  Using the none driver based on user configuration
-
-⛔  Exiting due to RSRC_INSUFFICIENT_CORES: None has less than 2 CPUs available, but Kubernetes requires at least 2 to be available
-```
-
-To achieve the goal of deploying services on the aws_instance with Terraform, we needed a more efficient machine. Therefore, we've decided to deploy everything locally with all problems with Minikube on Unix-OS.
+Check in browser respective frontend service url with port.
