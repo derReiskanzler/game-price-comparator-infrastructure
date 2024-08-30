@@ -216,42 +216,21 @@ Reapply change:
 terraform apply
 ```
 
-### Problems with AWS Cloud
-
-Virtual machine with more than 2Gi CPU is required to be able to use Kubernetes on the aws.
-
-Firstly, we've tried to install kubernetes on the aws instance manually using minikube and kubelet+kubeadm, but received following errors:
-```log
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-I0825 11:29:59.416029   12189 version.go:256] remote version is much newer: v1.31.0; falling back to: stable-1.30
-[init] Using Kubernetes version: v1.30.4
-[preflight] Running pre-flight checks
-W0825 11:29:59.527174   12189 checks.go:1079] [preflight] WARNING: Couldn't create the interface used for talking to the container runtime: crictl is required by the container runtime: executable file not found in $PATH
-	[WARNING FileExisting-socat]: socat not found in system path
-	[WARNING Service-Kubelet]: kubelet service is not enabled, please run 'systemctl enable kubelet.service'
-error execution phase preflight: [preflight] Some fatal errors occurred:
-	[ERROR NumCPU]: the number of available CPUs 1 is less than the required 2
-	[ERROR Mem]: the system RAM (446 MB) is less than the minimum 1700 MB
-	[ERROR FileExisting-crictl]: crictl not found in system path
-	[ERROR FileExisting-conntrack]: conntrack not found in system path
-[preflight] If you know what you are doing, you can make a check non-fatal with `--ignore-preflight-errors=...`
-To see the stack trace of this error execute with --v=5 or higher
-```
-
-```log
-sudo minikube start --driver=none
-😄  minikube v1.33.1 on Ubuntu 22.04 (xen/amd64)
-✨  Using the none driver based on user configuration
-
-⛔  Exiting due to RSRC_INSUFFICIENT_CORES: None has less than 2 CPUs available, but Kubernetes requires at least 2 to be available
-```
-
-To achieve the goal of deploying services on the aws_instance with Terraform, we needed a more efficient machine. Therefore, we've decided to deploy everything locally with all problems with Minikube on Unix-OS.
-
-
 ### Remote Setup with Terraform, Ansible and Kubeadm
 
-Make sure you have a ssh key-pair named `operator` in `/terraform/<environment>/.ssh`.
+We followed [this tutorial](https://www.youtube.com/watch?v=Cr6oLkCAwiA) to set up an unmanaged K8-Cluster.
+
+![](./docs//assets/infrastructure.png)
+<strong>Fig. 1: Architecture diagramm</strong>
+
+
+#### Prerequisites
+
+Make sure you:
+- [install](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) Ansible
+- a ssh key-pair named `operator` in `/terraform/<environment>/.ssh`
+
+#### Setup
 
 Run script to set it up in one go or do it step by step by following the same steps in the script:
 ```bash
@@ -262,3 +241,4 @@ Check if you can connect to the control plane:
 ```bash
 ssh -i .ssh/operator -l ubuntu $(terraform output -raw 'control_plane_ipv4')
 ```
+
