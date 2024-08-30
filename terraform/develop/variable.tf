@@ -1,6 +1,6 @@
 variable "ssh_public_key_path" {
   type = string
-  default = "../.ssh/operator.pub"
+  default = ".ssh/operator.pub"
   description = "path to the public part of the SSH key pair"
 }
 

@@ -142,34 +142,3 @@ resource "aws_security_group" "flannel_security_group" {
     Name = "develop_flannel_overlay_backend_security_group"
   }
 }
-
-# resource "aws_security_group" "weavenet_security_group" {
-#   ingress {
-#     description = "Weavenet TCP"
-#     protocol    = "tcp"
-#     from_port   = 6783
-#     to_port     = 6783
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-
-#   ingress {
-#     description = "Weavenet UDP"
-#     protocol    = "udp"
-#     from_port   = 6784
-#     to_port     = 6784
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-
-#   ingress {
-#     description = "Weavenet UDP"
-#     protocol    = "udp"
-#     from_port   = 6783
-#     to_port     = 6783
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-
-
-#   tags = {
-#     Name = "develop_flannel_overlay_backend_security_group"
-#   }
-# }
