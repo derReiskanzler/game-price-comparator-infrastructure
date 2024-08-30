@@ -251,71 +251,14 @@ To achieve the goal of deploying services on the aws_instance with Terraform, we
 
 ### Remote Setup with Terraform, Ansible and Kubeadm
 
-Make sure you have a ssh key-pair named `operator` in `/terraform/.ssh`.
+Make sure you have a ssh key-pair named `operator` in `/terraform/<environment>/.ssh`.
 
-Run script:
+Run script to set it up in one go or do it step by step by following the same steps in the script:
 ```bash
-./terraform/develop/provision.sh
-```
-
-Or step by step.
-
-Infrastructure setup:
-```bash
-terraform init
-terraform apply # optionally run with --auto-approve
+./terraform/<environment>/provision.sh
 ```
 
 Check if you can connect to the control plane:
 ```bash
-ssh -i ../.ssh/operator -l ubuntu $(terraform output -raw 'control_plane_ipv4')
-```
-
-Make sure you have terraform installed as this setup uses a plugin to [provide ansible for terraform](https://www.ansible.com/blog/providing-terraform-with-that-ansible-magic/). The plugin can be used in the inventory.yaml but needs to be installed from [this site](https://galaxy.ansible.com/ui/repo/published/cloud/terraform/) and shows following command to run:
-```bash
-ansible-galaxy collection install cloud.terraform
-```
-
-It enables the hosts file (that is saved in the terraform state) to be accessible for ansible in order to create a dynamic hosts file. To check if it worked run:
-```bash
-ansible-inventory -i inventory.yaml --graph
-
-# Expected output something like:
-@all:
-  |--@ungrouped:
-  |--@master:
-  |  |--control_plane
-  |--@workers:
-  |  |--worker-0
-  |  |--worker-1
-```
-
-To run the playbook:
-```bash
-ansible-playbook -i inventory.yaml playbook.yaml --ask-become-pass
-```
-
-The flag `--ask-become-pass` asks for your sudo password that is used on your local machine so it can create and execute commands on the remote host machines.
-
-Check kube config file and look for server property e.g. `server: https://[master-ip]` and check if it matches the master-ip (check master-ip in files/hosts). Then set that config as default by exporting the path to the file as the KUBECONFIG-Variable
-```bash
-# Print
-cat /tmp/kubeconfig/config
-
-# Overwrites kubeconfig on your machine with remote config that has been saved on your machine after running the playbook (only temporarily - resets as soon as you destroy everything)
-export KUBECONFIG=/tmp/kubeconfig/config
-
-# Check applied config
-kubectl config view
-
-# Check if you have access to the remote cluster that you created
-kubectl get pods --all-namespaces
-# Or 
-kubectl get all --all-namespaces
-
-# get all machines
-kubectl get nodes
-
-kubectl cluster-info
-
+ssh -i .ssh/operator -l ubuntu $(terraform output -raw 'control_plane_ipv4')
 ```

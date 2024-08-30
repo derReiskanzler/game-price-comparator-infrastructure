@@ -8,7 +8,10 @@
   vars:
     ansible_python_interpreter: /usr/bin/python3
   tasks:
-    - debug: var=ansible_host
+    - ansible.builtin.debug:
+        var: ansible_host
+    - ansible.builtin.debug:
+        var: ansible_facts
     # - set_fact:
     #     ansible_python_interpreter: "/usr/bin/python3"
 
@@ -22,14 +25,14 @@
       vars:
         ansible_connection: local
 
-# each machine gets their hostname set
+    # Each machine gets their hostname set
     - name: Set a hostname
       ansible.builtin.hostname:
         name: "{{ node_hostname }}"
 
-# each machine copies and gets updates /etc/hosts so they know each other
+    # Each machine copies and gets updates /etc/hosts so they know each other
     - name: Add IP to /etc/hosts in all nodes
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/hosts
         line: "{{ hostvars[item]['ansible_host'] }} {{ hostvars[item]['inventory_hostname'] }}"
         state: present
@@ -48,13 +51,12 @@
     #     path: /etc/hosts
     #     backup: yes
 
-# Why disable swap? - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#before-you-begin
+    # Why disable swap? - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#before-you-begin
     - name: Disable swap on all nodes
       ansible.builtin.shell: swapoff -a
 
 
-# Prerequisites to install container runtime- https://kubernetes.io/docs/setup/production-environment/container-runtimes/#install-and-configure-prerequisites
-
+    # Prerequisites to install container runtime- https://kubernetes.io/docs/setup/production-environment/container-runtimes/#install-and-configure-prerequisites
     - name: kernel module prerequisites
       ansible.builtin.shell:
         cmd: |
@@ -97,12 +99,12 @@
           - gnupg
           - lsb-release
 
-# Install Docker
+    # Install Docker
     - name: Create keyrings directory
-      file: 
+      ansible.builtin.file: 
         path: /etc/apt/keyrings
         state: directory
-        mode: '0755'
+        mode: "0755"
 
     # - name: add docker GPG key
     #   apt_key:
@@ -115,22 +117,21 @@
     #     state: present
 
     - name: Add docker GPG key
-      shell: |
+      ansible.builtin.shell: |
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
         sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
     - name: Add Docker Repository
-      shell: |
+      ansible.builtin.shell: |
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
     - name: Update apt and install docker-ce
-      apt:
+      ansible.builtin.apt:
         name: docker-ce
         state: latest
         update_cache: true
 
-# Install container runtime (containerd)
-
+    # Install container runtime (containerd)
     - name: Install containerd.io
       ansible.builtin.apt:
         pkg:
@@ -143,7 +144,7 @@
         state: started
         enabled: yes
 
-# Configuring the systemd cgroup driver - https://kubernetes.io/docs/setup/production-environment/container-runtimes/#systemd-cgroup-driver
+    # Configuring the systemd cgroup driver - https://kubernetes.io/docs/setup/production-environment/container-runtimes/#systemd-cgroup-driver
     - name: Setup containerd to use systemd as cgroup
       ansible.builtin.copy:
         backup: true
@@ -156,7 +157,7 @@
         daemon_reload: yes
         name: containerd
 
-# Install kubeadm - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
+    # Install kubeadm - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
     - name: Download Kubernetes public key
       ansible.builtin.shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
@@ -230,22 +231,34 @@
         owner: ubuntu
         group: ubuntu
         mode: "0600"
+    
+    - name: Install nginx controller
+      become: false
+      ansible.builtin.shell: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.2/deploy/static/provider/cloud/deploy.yaml
 
     - name: Create deployment directory for ubuntu user
       ansible.builtin.file:
         path: /home/ubuntu/deployment
         state: directory
-        mode: "0755"
         owner: ubuntu
         group: ubuntu
+        mode: "0755"
 
-    # - name: Copy k8 apply script to ubuntu user's home
-    #   ansible.builtin.copy:
-    #     src: ./files/apply.sh
-    #     dest: /home/ubuntu/deployment/apply.sh
-    #     owner: ubuntu
-    #     group: ubuntu
-    #     mode: "700"
+    - name: Copy k8-resources to deployment directory
+      ansible.builtin.copy:
+        src: ../../k8-resources/develop/
+        dest: /home/ubuntu/deployment/
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Copy k8 apply script to deployment directory
+      ansible.builtin.copy:
+        src: ./files/apply.sh
+        dest: /home/ubuntu/deployment/apply.sh
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
 
     # - name: set the correct permission on kubeconfig file
     #   shell: sudo chown $(id -u):$(id -g) $HOME/.kube/config
@@ -262,7 +275,7 @@
         dest: /tmp/kubeconfig/
         flat: yes
 
-# Cluster is created but worker nodes havent joined yet
+    # Cluster is created but worker nodes havent joined yet
     - name: Generate join token for worker nodes
       ansible.builtin.shell: sudo kubeadm token create --print-join-command
       register: join_node_token
@@ -275,6 +288,6 @@
   hosts: workers
   become: true
   tasks:
-  # execute join node variable as command as configured in the control plane step
+    # execute join node variable as command as configured in the control plane step
     - name: add worker nodes to cluster
-      shell: "sudo {{ hostvars['control_plane'].join_node }}"
+      ansible.builtin.shell: "sudo {{ hostvars['control_plane'].join_node }}"
