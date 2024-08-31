@@ -3,13 +3,18 @@
 The Game Price Comparator Infrastructure makes use of docker images published respectively in the [Backend]((https://github.com/kirdreamer/GamePriceComparator)) and [Frontend](https://github.com/derReiskanzler/fe-angular-game-price-comparator) Repository.
 
 ## Table Of Contents
-1. [Local Setup with Minikube](#local-setup-with-minikube)
+1. [Scaffold](#scaffold)
+2. [Local Setup with Minikube](#local-setup-with-minikube)
     - [Preparation](#preparation)
     - [Setup](#setup)
         - [Problems with Minikube on Unix-OS](#problems-with-minikube-on-unix-os)
     - [Stop](#stop)
-2. [Local Setup with OpenTofu and Minikube](#local-setup-with-opentofu-and-minikube)
+3. [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)
     - [Problems with Minikube on Unix-OS (again)](#problems-with-minikube-on-unix-os-again)
+
+## Scaffold
+The scaffold consists of three namespaces in the root directory representing the number of environments: `develop`, `staging` and `production`. Each of them contain K8-resources that are divided in frontend and backend resources that can be used to spin up a local cluster (↗︎ [Local Setup with Minikube](#local-setup-with-minikube)).
+However there is also a terraform directory that itself holds all three environments and contain each the k8-resources again, just as `.tf`-files to provision it via terraform (↗︎ [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)).
 
 ## Local Setup with minikube
 
@@ -158,7 +163,9 @@ kubectl delete --all configmaps
 kubectl delete [configmap,ingress,service,pod] <name>
 ```
 
-## Local Setup with OpenTofu and Minikube
+## Local Setup with Terraform and Minikube
+
+This setup is basially the same as the setup before as it still uses `minikube`, just with terraform to allocate k8-resources at once instead of single-handedly applying resources in a specific order.
 
 Start minikube:
 ``` bash
@@ -169,23 +176,23 @@ minikube start \
     --addons=ingress
 ```
 
-Create `.env` in `./terraform/kubernetes/develop` using the `.env.template`.
-
-Spin up tofu:
-``` bash
-# cd into ./terraform/kubernetes/develop
-tofu init
-tofu apply
-```
+Create `.env` in `./terraform/<environment>` using the `.env.template`.
 
 Watch apply/creation of pods
 ```bash
 watch --exec kubectl get pods --output wide
 ```
 
+Spin up terraform:
+``` bash
+# cd into ./terraform/<environment>
+terraform init
+terraform apply
+```
+
 Delete ressources:
 ``` bash
-tofu destroy
+terraform destroy
 ```
 
 ### Problems with Minikube on Unix-OS (again)
@@ -196,40 +203,33 @@ To access the Frontend URL locally in the browser, run:
 ```bash
 minikube tunnel
 ```
-<!-- 
-And add the Frontend URL to `/etc/hosts`:
-```
-127.0.0.1 fe-angular-game-price-comparator.<environment>.nip.io
-``` -->
 
-The Frontend application is then accessible at `fe-angular-game-price-comparator.<environment>.nip.io`.
-
-To be CORS compliant with the Backend, we need to get the URL of the exposed Backend ingress and add it as an environment variable to our Frontend .tf-file:
+To be CORS compliant with the Backend, we need to get the URL of the exposed Frontend load balancer service and add it as an environment variable to our Backend:
 ```bash
 # Get exposed service url of cluster
 minikube service be-java-game-price-comparator-<environment>-service --url
 minikube service fe-angular-game-price-comparator-<environment>-service --url
 ```
 
-Add in `frontend-deployment.tf` file:
+Add in `backend-deployment.tf`:
 ```
 env {
-    name  = "API_BASE_URL"
-    value = "<service-url>/api"
+    name  = "FRONTEND_URL"
+    value = "<frontend-service-url>/api"
 }
 ```
 
-Add in `backend-deployment.tf` file:
+Same for `frontend-deployment.tf`:
 ```
 env {
     name  = "API_BASE_URL"
-    value = "<service-url>"
+    value = "<backend-service-url>/api"
 }
 ```
 
 Reapply change:
 ```bash
-tofu apply
+terraform apply
 ```
 
-Check in browser respective frontend service url with port.
+The frontend should now be available from the browser using the `frontend-service-url` and its respective port.
