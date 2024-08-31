@@ -1,0 +1,441 @@
+- name: Basic Setup
+  hosts: all
+  gather_facts: false
+  become: true # for creating files e.g. config.toml
+  # ansible_python_interpreter error: https://stackoverflow.com/questions/64099259/ansible-ansible-python-interpreter-error
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    # - set_fact:
+    #     ansible_python_interpreter: "/usr/bin/python3"
+
+    - name: Wait 200 seconds for port 22 to become open and contain "OpenSSH"
+      ansible.builtin.wait_for:
+        port: 22
+        host: "{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}"
+        search_regex: OpenSSH
+        delay: 10
+        timeout: 200
+      vars:
+        ansible_connection: local
+
+    # Each machine gets their hostname set
+    - name: Set a hostname
+      ansible.builtin.hostname:
+        name: "{{ node_hostname }}"
+
+    # Each machine copies and gets updates /etc/hosts so they know each other
+    - name: Add IP to /etc/hosts in all nodes
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[item]['ansible_host'] }} {{ hostvars[item]['inventory_hostname'] }}"
+        state: present
+        backup: yes
+      loop: "{{ groups['all'] }}"
+    
+    # Why disable swap? - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#before-you-begin
+    - name: Disable swap on all nodes
+      ansible.builtin.shell: swapoff -a
+
+
+    # Prerequisites to install container runtime- https://kubernetes.io/docs/setup/production-environment/container-runtimes/#install-and-configure-prerequisites
+    - name: kernel module prerequisites
+      ansible.builtin.shell:
+        cmd: |
+          cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+          overlay
+          br_netfilter
+          EOF
+
+    - name: Add overlay module
+      community.general.modprobe:
+        name: overlay
+        state: present
+
+    - name: Add br_netfilter module
+      community.general.modprobe:
+        name: br_netfilter
+        state: present
+
+    - name: Set sysctl params required by setup
+      ansible.builtin.shell:
+        cmd: |
+          cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+          net.bridge.bridge-nf-call-iptables  = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.ipv4.ip_forward                 = 1
+          EOF
+
+    - name: Apply sysctl params without reboot
+      ansible.builtin.shell: sysctl --system
+
+    - name: Create containerd config file
+      ansible.builtin.shell: mkdir -p /etc/containerd && touch /etc/containerd/config.toml
+
+    - name: Install containerd prerequisites
+      ansible.builtin.apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+
+    # Install Docker
+    - name: Create keyrings directory
+      ansible.builtin.file: 
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Add docker GPG key
+      ansible.builtin.shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker Repository
+      ansible.builtin.shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Update apt and install docker-ce
+      ansible.builtin.apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+
+    # Install container runtime (containerd)
+    - name: Install containerd.io
+      ansible.builtin.apt:
+        pkg:
+          - containerd.io
+
+    - name: Enable containerd
+      ansible.builtin.systemd:
+        name: containerd
+        daemon_reload: yes
+        state: started
+        enabled: yes
+
+    # Configuring the systemd cgroup driver - https://kubernetes.io/docs/setup/production-environment/container-runtimes/#systemd-cgroup-driver
+    - name: Setup containerd to use systemd as cgroup
+      ansible.builtin.copy:
+        backup: true
+        src: ./files/containerd-config.toml
+        dest: /etc/containerd/config.toml
+
+    - name: Restart service cron, in all cases, also issue daemon-reload to pick up config changes
+      ansible.builtin.systemd:
+        state: restarted
+        daemon_reload: yes
+        name: containerd
+
+    # Install kubeadm - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
+    - name: Download Kubernetes public key
+      ansible.builtin.shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    - name: Add Kubernetes Repository
+      ansible.builtin.shell: echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+    - name: Install kubadm, kubectl, kubelet
+      ansible.builtin.shell: |
+        sudo apt-get update
+        sudo apt-get install -y kubelet kubeadm kubectl
+
+    # prevents those packages being affected by apt-upgrade apt-update
+    - name: Hold kubectl,kubeadm,kubelet packages
+      ansible.builtin.shell: apt-mark hold kubelet kubectl kubeadm
+
+# Setup Control Plane - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#initializing-your-control-plane-node
+- name: Setup Control Plane Node
+  hosts: master
+  become: true
+  tasks:
+    - name: Initialize kubeadm
+      # ansible_host variable used which is public ip and not private ip of machine
+      ansible.builtin.shell: sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --control-plane-endpoint "{{ansible_host}}:6443"
+
+    - name: Create .kube directory for ubuntu user
+      ansible.builtin.file:
+        path: /home/ubuntu/.kube
+        state: directory
+        mode: "0755"
+        owner: ubuntu
+        group: ubuntu
+
+    # when kubeadm is initialized admin config gets copied into kube config
+    - name: Copy kubeconfig to ubuntu user's home
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/ubuntu/.kube/config
+        remote_src: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
+    
+    - name: Create deployment directory for ubuntu user
+      ansible.builtin.file:
+        path: /home/ubuntu/deployment
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Copy k8-resources to deployment directory
+      ansible.builtin.copy:
+        src: ../../k8-resources/develop/
+        dest: /home/ubuntu/deployment/
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Copy k8 apply script to deployment directory
+      ansible.builtin.copy:
+        src: ./files/apply.sh
+        dest: /home/ubuntu/deployment/apply.sh
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Install flannel
+      become: false
+      ansible.builtin.shell: kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/v0.20.2/Documentation/kube-flannel.yml
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+
+    - name: Copy kubeconfig file locally
+      ansible.builtin.fetch:
+        src: /home/ubuntu/.kube/config
+        dest: /tmp/kubeconfig/
+        flat: yes
+
+    # Cluster is created but worker nodes havent joined yet
+    - name: Generate join token for worker nodes
+      ansible.builtin.shell: sudo kubeadm token create --print-join-command
+      register: join_node_token
+
+    - name: Save join command as variable
+      ansible.builtin.set_fact:
+        join_node: "{{ join_node_token.stdout_lines[0] }}"
+
+- name: Setup Worker Nodes
+  hosts: workers
+  become: true
+  tasks:
+    # execute join node variable as command as configured in the control plane step
+    - name: add worker nodes to cluster
+      ansible.builtin.shell: "sudo {{ hostvars['control_plane'].join_node }}"
+
+- name: Provision K8 ressources with ingress
+  hosts: master
+  become: true
+  tasks:
+    - name: Install nginx controller
+      become: false
+      # ansible.builtin.shell: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.2/deploy/static/provider/cloud/deploy.yaml
+      ansible.builtin.shell: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.2/deploy/static/provider/baremetal/deploy.yaml
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+    
+    - name: Wait for nginx controller deployment to be ready
+      become: false
+      ansible.builtin.shell: |
+        kubectl rollout status deployment ingress-nginx-controller -n ingress-nginx --timeout=90s
+
+    - name: Get NodePort of ingress-nginx-controller
+      become: false
+      ansible.builtin.shell: |
+        kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.spec.ports[?(@.port==80)].nodePort}'
+      register: nodeport_result
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+
+    - name: Set fact for NodePort
+      ansible.builtin.set_fact:
+        ingress_nodeport: "{{ nodeport_result.stdout }}"
+
+    - name: Get public IP of a worker node
+      ansible.builtin.set_fact:
+        worker_public_ip: "{{ hostvars[groups['workers'][0]]['ansible_host'] }}"
+
+    - name: Display .nip.io URLs
+      ansible.builtin.debug:
+        msg:
+          - "Frontend URL: http://fe-angular-game-price-comparator.{{ worker_public_ip }}.nip.io:{{ ingress_nodeport }}"
+          - "Backend URL: http://be-java-game-price-comparator.{{ worker_public_ip }}.nip.io:{{ ingress_nodeport }}"
+
+    - name: Update frontend Ingress for .nip.io
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+      ansible.builtin.shell: |
+        kubectl apply -f - <<EOF
+        apiVersion: 'networking.k8s.io/v1'
+        kind: 'Ingress'
+        metadata:
+          name: fe-angular-game-price-comparator-develop-ingress
+          namespace: default
+          # annotations:
+          #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
+        spec:
+          ingressClassName: nginx
+          rules:
+            - host: fe-angular-game-price-comparator.develop.{{ worker_public_ip }}.nip.io
+              http:
+                paths:
+                  - pathType: Prefix
+                    path: '/'
+                    backend:
+                      service:
+                        name: fe-angular-game-price-comparator-develop-service
+                        port:
+                          number: 80
+          # tls:
+          #   - hosts:
+          #     - fe-angular-game-price-comparator.develop.{{ worker_public_ip }}.nip.io
+          #     secretName: letsencrypt-prod
+        EOF
+
+    - name: Update backend Ingress for .nip.io
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+      ansible.builtin.shell: |
+        kubectl apply -f - <<EOF
+        apiVersion: 'networking.k8s.io/v1'
+        kind: 'Ingress'
+        metadata:
+          name: be-java-game-price-comparator-develop-ingress
+          namespace: default
+          # annotations:
+          #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
+        spec:
+          ingressClassName: nginx
+          rules:
+            - host: be-java-game-price-comparator.develop.{{ worker_public_ip }}.nip.io
+              http:
+                paths:
+                  - pathType: Prefix
+                    path: '/'
+                    backend:
+                      service:
+                        name: be-java-game-price-comparator-develop-service
+                        port:
+                          number: 80
+          # tls:
+          #   - hosts:
+          #     - be-java-game-price-comparator.develop.{{ worker_public_ip }}.nip.io
+          #     secretName: letsencrypt-prod  
+        EOF
+
+    - name: Update backend deployment for .nip.io
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+      ansible.builtin.shell: |
+        kubectl apply -f - <<EOF
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: be-java-game-price-comparator-develop-deployment
+          labels:
+            app: be-java-game-price-comparator-develop
+        spec:
+          replicas: 2
+          strategy:
+            type: RollingUpdate
+            rollingUpdate:
+              maxUnavailable: 1
+              maxSurge: 1
+          selector:
+            matchLabels:
+              app: be-java-game-price-comparator-develop
+          template:
+            metadata:
+              labels:
+                app: be-java-game-price-comparator-develop
+            spec:
+              automountServiceAccountToken: false
+              containers:
+                - name: be-java-game-price-comparator-develop
+                  resources:
+                    limits:
+                      cpu: "0.7"
+                  image: 'docker.io/kkkira/game-price-comparator-develop:latest'
+                  imagePullPolicy: Always
+                  ports:
+                    - containerPort: 8080
+                  envFrom:
+                    - secretRef:
+                        name: be-java-game-price-comparator-develop-secret
+                  env:
+                    - name: POSTGRES_URL
+                      valueFrom:
+                        configMapKeyRef:
+                          name: postgres-config
+                          key: postgres-url
+                    - name: FRONTEND_URL
+                      value: http://fe-angular-game-price-comparator.develop.{{ worker_public_ip }}.nip.io:{{ ingress_nodeport }}
+                  readinessProbe:
+                    httpGet:
+                      path: /api/v1/health
+                      port: 8080
+                    initialDelaySeconds: 20
+                    periodSeconds: 30
+                    timeoutSeconds: 5
+        EOF
+
+    - name: Update frontend deployment for .nip.io
+      environment:
+        KUBECONFIG: /home/ubuntu/.kube/config
+      ansible.builtin.shell: |
+        kubectl apply -f - <<EOF
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: fe-angular-game-price-comparator-develop-deployment
+          labels:
+            app: fe-angular-game-price-comparator-develop
+        spec:
+          replicas: 2
+          strategy:
+            type: RollingUpdate
+            rollingUpdate:
+              maxUnavailable: 1
+              maxSurge: 1
+          selector:
+            matchLabels:
+              app: fe-angular-game-price-comparator-develop
+          template:
+            metadata:
+              labels:
+                app: fe-angular-game-price-comparator-develop
+            spec:
+              containers:
+                - name: fe-angular-game-price-comparator-develop
+                  image: 'docker.io/derreiskanzler/fe-angular-game-price-comparator-develop:latest'
+                  env:
+                    - name: API_BASE_URL
+                      value: "http://be-java-game-price-comparator.develop.{{ worker_public_ip }}.nip.io:{{ ingress_nodeport }}/api"
+                    - name: ENV
+                      value: develop
+                  resources:
+                    limits:
+                      cpu: 500m
+                      memory: 256Mi
+                  imagePullPolicy: Always
+                  ports:
+                    - containerPort: 80
+        EOF
+          
+    # - name: Install cert manager
+    #   become: false
+    #   ansible.builtin.shell: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.yaml
+    #   environment:
+    #     KUBECONFIG: /home/ubuntu/.kube/config
+
+    - name: Display .nip.io URLs
+      ansible.builtin.debug:
+        msg:
+          - "Frontend URL: http://fe-angular-game-price-comparator.{{ worker_public_ip }}.nip.io:{{ ingress_nodeport }}"
+          - "Backend URL: http://be-java-game-price-comparator.{{ worker_public_ip }}.nip.io:{{ ingress_nodeport }}"
+
+    - name: Display hosts
+      ansible.builtin.debug:
+        var: ansible_host

@@ -28,7 +28,7 @@ kind: CronJob
 metadata:
   name: frontend-image-checker
 spec:
-  schedule: "*/2 * * * *"
+  schedule: "*/1 * * * *"
   jobTemplate:
     spec:
       template:

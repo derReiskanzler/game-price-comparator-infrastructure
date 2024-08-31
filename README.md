@@ -3,13 +3,27 @@
 The Game Price Comparator Infrastructure makes use of docker images published respectively in the [Backend](https://github.com/kirdreamer/GamePriceComparator) and [Frontend](https://github.com/derReiskanzler/fe-angular-game-price-comparator) Repository.
 
 ## Table Of Contents
-1. [Local Setup with Minikube](#local-setup-with-minikube)
+1. [Scaffold](#scaffold)
+2. [Local Setup with Minikube](#local-setup-with-minikube)
     - [Preparation](#preparation)
-    - [Setup](#setup)
+    - [Step-by-Step](#step-by-step)
         - [Problems with Minikube on Unix-OS](#problems-with-minikube-on-unix-os)
     - [Stop](#stop)
-2. [Local Setup with OpenTofu and Minikube](#local-setup-with-opentofu-and-minikube)
+3. [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)
     - [Problems with Minikube on Unix-OS (again)](#problems-with-minikube-on-unix-os-again)
+4. [Remote Setup with Terraform, Ansible and Kubeadm](#remote-setup-with-terraform-ansible-and-kubeadm)
+    - [Prerequisites](#prerequisites)
+    - [Setup](#setup)
+    - [Access browser](#access-browser)
+    - [References](#references)
+
+## Scaffold
+The scaffold consists of a k8-resources, a terraform-local and a terraform-remote directory.
+Each of them contain three namespaces representing the number of environments: `develop`, `staging` and `production`. For the k8-resources, each of the environments contain `.yaml`-files that are divided in frontend and backend resources that can be used to spin up a local cluster (↗︎ [Local Setup with Minikube](#local-setup-with-minikube)) or to be copied into a remote machine to spin up a cluster on a remote machine (↗︎ [Remote Setup with Terraform, Ansible and Kubeadm](#remote-setup-with-terraform-ansible-and-kubeadm)).
+
+However there is also a terraform-local directory that itself holds all three environments and contain each the k8-resources again, just as `.tf`-files in order to spin it up via terraform (↗︎ [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)).
+
+The terraform remote directory so far contains only the develop environment, as the remote approach does not work yet. The remote approach contains `.tf`-files for spinning up the infrastructure and `.yaml`-files for ansible which provision and manage the infrastructure.
 
 ## Local Setup with minikube
 
@@ -47,7 +61,7 @@ You need to run commands with namespace flag accordingly e.g.:
 kubectl apply -f ./postgres.yaml -n <environment>
 ``` 
 
-### Setup
+### Step-by-Step
 
 1. [Download](https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Farm64%2Fstable%2Fbinary+download) minikube and start cluster:
 ``` bash
@@ -158,7 +172,9 @@ kubectl delete --all configmaps
 kubectl delete [configmap,ingress,service,pod] <name>
 ```
 
-## Local Setup with OpenTofu and Minikube
+## Local Setup with Terraform and Minikube
+
+This setup is bascially the same as the setup before as it still uses `minikube`, just with terraform to allocate k8-resources at once instead of single-handedly applying resources in a specific order.
 
 Start minikube:
 ``` bash
@@ -169,23 +185,24 @@ minikube start \
     --addons=ingress
 ```
 
-Create `.env` in `./terraform/kubernetes/develop` using the `.env.template`.
-
-Spin up tofu:
-``` bash
-# cd into ./terraform/kubernetes/develop
-tofu init
-tofu apply
-```
+Create `.env` in `./terraform-local/<environment>` using the `.env.template`.
+Create `postgres-secret.tf` in `./terraform-local/<environment>` using the `./terraform-local/<environment>/postgres-secret.tf.template`.
 
 Watch apply/creation of pods
 ```bash
 watch --exec kubectl get pods --output wide
 ```
 
+Spin up terraform:
+``` bash
+# cd into ./terraform-local/<environment>
+terraform init
+terraform apply
+```
+
 Delete ressources:
 ``` bash
-tofu destroy
+terraform destroy
 ```
 
 ### Problems with Minikube on Unix-OS (again)
@@ -196,40 +213,112 @@ To access the Frontend URL locally in the browser, run:
 ```bash
 minikube tunnel
 ```
-<!-- 
-And add the Frontend URL to `/etc/hosts`:
-```
-127.0.0.1 fe-angular-game-price-comparator.<environment>.nip.io
-``` -->
 
-The Frontend application is then accessible at `fe-angular-game-price-comparator.<environment>.nip.io`.
-
-To be CORS compliant with the Backend, we need to get the URL of the exposed Backend ingress and add it as an environment variable to our Frontend .tf-file:
+To be CORS compliant with the Backend, we need to get the URL of the exposed Frontend load balancer service and add it as an environment variable to our Backend:
 ```bash
 # Get exposed service url of cluster
 minikube service be-java-game-price-comparator-<environment>-service --url
 minikube service fe-angular-game-price-comparator-<environment>-service --url
 ```
 
-Add in `frontend-deployment.tf` file:
+Add in `backend-deployment.tf`:
 ```
 env {
-    name  = "API_BASE_URL"
-    value = "<service-url>/api"
+    name  = "FRONTEND_URL"
+    value = "<frontend-service-url>/api"
 }
 ```
 
-Add in `backend-deployment.tf` file:
+Same for `frontend-deployment.tf`:
 ```
 env {
     name  = "API_BASE_URL"
-    value = "<service-url>"
+    value = "<backend-service-url>/api"
 }
 ```
 
 Reapply change:
 ```bash
-tofu apply
+terraform apply
 ```
 
-Check in browser respective frontend service url with port.
+The frontend should now be available from the browser using the `frontend-service-url` and its respective port.
+
+### Remote Setup with Terraform, Ansible and Kubeadm
+We followed [this tutorial](https://www.youtube.com/watch?v=Cr6oLkCAwiA) to set up an unmanaged K8-Cluster - for more articles checkout the [references](#references).
+
+As of now the ingress doesnt work. There is an ingress-nginx-controller installed (see `/terraform-remote/<environment>/playbook.yaml`), but there is still an issue with the configuration.
+
+
+![](./docs/assets/infrastructure.png)
+<strong>Fig. 1: Architecture diagramm</strong>
+
+
+#### Prerequisites
+
+Make sure you:
+- [install](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) Ansible
+- [install](https://galaxy.ansible.com/ui/repo/published/cloud/terraform/) Ansible's Terraform [Plugin](https://www.ansible.com/blog/providing-terraform-with-that-ansible-magic/)
+- have a ssh key-pair named `operator` in `/terraform-remote/<environment>/.ssh`
+
+#### Setup
+
+Run script to set it up in one go or do it step by step by following the same steps in the script:
+```bash
+cd ./terraform-remote/<environment>
+
+./provision.sh
+```
+
+The script within contains more details on what exactly is executed.
+
+Try to ssh into the control plane:
+```bash
+ssh -i .ssh/operator -l ubuntu $(terraform output -raw 'control_plane_ipv4')
+```
+
+#### Access browser
+```bash
+# Get ip addresses of worker_nodes
+terraform output 'worker_nodes_ipv4'
+# Expected Output:
+# [
+#   "<ip_worker_node_0>",
+#   "<ip_worker_node-1>>",
+# ]
+```
+
+Use any `ip_worker_node` along with the frontend load balancer service `target port` for http that has been printed in the `provision.sh` script when `kubectl get all --all-namespaces` was executed. Then use it to access the frontend in the browser:
+```bash
+http://<ip_worker_node>:<target_port_frontend_load_balancer_service>
+```
+
+As of now the ingress doesnt work, which makes it not possible for the frontend to interact with the backend.
+
+### References
+Articles:
+- [Automating Kubeadm Cluster on EC2: Terraform, Ansible & GitHub Actions](https://medium.com/@chenwingu/automating-kubeadm-cluster-on-ec2-terraform-ansible-github-actions-be847ca8e4a2)
+- [How to Create a Local Kubernetes Cluster: Terraform and Ansible](https://kravensecurity.com/creating-local-kubernetes-cluster/)
+- [Using Terraform & Ansible Together](https://spacelift.io/blog/using-terraform-and-ansible-together)
+
+Videos:
+- [YouTube - K8s on AWS: install kubeadm on EC2 with terraform and ansible](https://www.youtube.com/watch?v=Cr6oLkCAwiA)
+
+
+Relevant for setting up AWS security groups:
+- [Kubernetes Ports and Protocols](https://kubernetes.io/docs/reference/networking/ports-and-protocols/)
+
+Relevant for Ansible Provisioning via Playbook:
+- [Install kubeadm on Cluster](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
+- [Create cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm)
+- [Install Container Runtime on Cluster](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#systemd-cgroup-driver)
+- [How to deploy NGINX Ingress Controller on Kubernetes using kubectl](https://platform9.com/learn/v1.0/tutorials/nginix-controller-via-yaml)
+    - [Nginx Ingress Controller in Kubernetes](https://medium.com/@kayvan.sol2/nginx-ingress-controller-in-kubernetes-3438479fe11c)
+    - [Kubernetes Ingress Controller Installation Guide](https://github.com/kubernetes/ingress-nginx/blob/main/docs/deploy/index.md)
+    - [Using Nginx Ingress Controller in Kubernetes bare-metal setup](https://medium.com/tektutor/using-nginx-ingress-controller-in-kubernetes-bare-metal-setup-890eb4e7772)
+    - [Available Ingress Controllers](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)
+- [Certificate Management with kubeadm](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/)
+
+CI/CD:
+- [Why You Shouldn’t Manage Terraform with Generic CI/CD Tools](https://spacelift.io/blog/terraform-with-generic-ci-cd-tools)
+- [How to Automate Terraform Deployments and Infrastructure Provisioning](https://spacelift.io/blog/terraform-automation)
