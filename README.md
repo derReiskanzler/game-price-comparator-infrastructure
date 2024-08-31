@@ -220,7 +220,7 @@ terraform apply
 
 We followed [this tutorial](https://www.youtube.com/watch?v=Cr6oLkCAwiA) to set up an unmanaged K8-Cluster.
 
-![](./docs//assets/infrastructure.png)
+![](./docs/assets/infrastructure.png)
 <strong>Fig. 1: Architecture diagramm</strong>
 
 
