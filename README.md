@@ -185,7 +185,8 @@ minikube start \
     --addons=ingress
 ```
 
-Create `.env` in `./terraform/<environment>` using the `.env.template`.
+Create `.env` in `./terraform-local/<environment>` using the `.env.template`.
+Create `postgres-secret.tf` in `./terraform-local/<environment>` using the `./terraform-local/<environment>/postgres-secret.tf.template`.
 
 Watch apply/creation of pods
 ```bash
@@ -194,7 +195,7 @@ watch --exec kubectl get pods --output wide
 
 Spin up terraform:
 ``` bash
-# cd into ./terraform/<environment>
+# cd into ./terraform-local/<environment>
 terraform init
 terraform apply
 ```
@@ -244,10 +245,9 @@ terraform apply
 The frontend should now be available from the browser using the `frontend-service-url` and its respective port.
 
 ### Remote Setup with Terraform, Ansible and Kubeadm
-We followed [this tutorial](https://www.youtube.com/watch?v=Cr6oLkCAwiA) to set up an unmanaged K8-Cluster.
+We followed [this tutorial](https://www.youtube.com/watch?v=Cr6oLkCAwiA) to set up an unmanaged K8-Cluster - for more articles checkout the [references](#references).
 
-The setup is on this branch: `feature/refactor-infra-into-cluster-with-ansible`.
-As of now the ingress doesnt work. There is an ingress-nginx-controller installed (see `/terraform/<environment>/playbook.yaml`), but there is still an issue with the configuration.
+As of now the ingress doesnt work. There is an ingress-nginx-controller installed (see `/terraform-remote/<environment>/playbook.yaml`), but there is still an issue with the configuration.
 
 
 ![](./docs/assets/infrastructure.png)
@@ -258,14 +258,14 @@ As of now the ingress doesnt work. There is an ingress-nginx-controller installe
 
 Make sure you:
 - [install](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) Ansible
-- a ssh key-pair named `operator` in `/terraform/<environment>/.ssh`
-- checkout following branch: `feature/refactor-infra-into-cluster-with-ansible`
+- [install](https://galaxy.ansible.com/ui/repo/published/cloud/terraform/) Ansible's Terraform [Plugin](https://www.ansible.com/blog/providing-terraform-with-that-ansible-magic/)
+- have a ssh key-pair named `operator` in `/terraform-remote/<environment>/.ssh`
 
 #### Setup
 
 Run script to set it up in one go or do it step by step by following the same steps in the script:
 ```bash
-cd ./terraform/<environment>
+cd ./terraform-remote/<environment>
 
 ./provision.sh
 ```
@@ -288,7 +288,7 @@ terraform output 'worker_nodes_ipv4'
 # ]
 ```
 
-Use any `ip_worker_node` along with the frontend load balancer service target port for http that has been printed in the `provision.sh` script when `kubectl get all --all-namespaces` was executed. Then use to access the frontend in the browser:
+Use any `ip_worker_node` along with the frontend load balancer service `target port` for http that has been printed in the `provision.sh` script when `kubectl get all --all-namespaces` was executed. Then use it to access the frontend in the browser:
 ```bash
 http://<ip_worker_node>:<target_port_frontend_load_balancer_service>
 ```

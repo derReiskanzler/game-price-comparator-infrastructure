@@ -3,23 +3,17 @@
 # Destroy
 echo "🔄 Destroying existing infrastructure first..."
 terraform destroy --auto-approve
-echo "✅ Existing Infrastructure destroyed."
+echo "✅ Existing Infrastructure destroyed.\n"
 
 
 # Initialize
 echo "🔄 Initializing terraform provider..."
 terraform init
-echo "✅ terraform initialization done."
+echo "✅ terraform initialization done.\n"
 
 # Apply
 terraform apply --auto-approve
-echo "✅ Infrastructure provisioned."
-
-# Install Ansible's Terraform Plugin
-# Provide ansible for terraform - https://www.ansible.com/blog/providing-terraform-with-that-ansible-magic/
-# The plugin is used in the inventory.yaml - https://galaxy.ansible.com/ui/repo/published/cloud/terraform/
-echo "🔄 Installing ansible's terraform plugin collection..."
-ansible-galaxy collection install cloud.terraform
+echo "✅ Infrastructure provisioned.\n"
 
 # Check if the plugin works by printing the parsed hosts file (from the terraform state)
 # for ansible to be accessible in order to create a dynamic hosts file
@@ -39,12 +33,12 @@ ansible-galaxy collection install cloud.terraform
 # thats why `--ask-become-pass` flag is used: https://stackoverflow.com/questions/21870083/specify-sudo-password-for-ansible
 echo "🔄 Run playbook..."
 ansible-playbook -i inventory.yaml playbook.yaml --ask-become-pass
-echo "✅ Playbook applied. Infrastructure provisioned and managed."
+echo "✅ Playbook applied. Infrastructure provisioned and managed.\n"
 
 echo "🔄 Applying k8 ressources..."
 ssh -i .ssh/operator -l ubuntu $(terraform output -raw 'control_plane_ipv4') 'sh ./deployment/apply.sh'
 
-echo "Waiting 10s before printing resource overview..."
+echo "Waiting 10s before printing resource overview...\n"
 sleep 10
 # Sets the config as default by exporting the path to the file as the KUBECONFIG-Variable
 # Overwrites kubeconfig on your machine with remote config
@@ -56,7 +50,7 @@ export KUBECONFIG=/tmp/kubeconfig/config
 
 # Health Check/Overview
 echo "🏥 All nodes in cluster:"
-kubectl get nodes
+kubectl get nodes -o wide
 echo "\n"
 
 echo "🏥 All ressources in cluster:"
