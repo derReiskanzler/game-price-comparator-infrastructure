@@ -3,14 +3,27 @@
 The Game Price Comparator Infrastructure makes use of docker images published respectively in the [Backend]((https://github.com/kirdreamer/GamePriceComparator)) and [Frontend](https://github.com/derReiskanzler/fe-angular-game-price-comparator) Repository.
 
 ## Table Of Contents
-1. [Local Setup with Minikube](#local-setup-with-minikube)
+1. [Scaffold](#scaffold)
+2. [Local Setup with Minikube](#local-setup-with-minikube)
     - [Preparation](#preparation)
-    - [Setup](#setup)
+    - [Step-by-Step](#step-by-step)
         - [Problems with Minikube on Unix-OS](#problems-with-minikube-on-unix-os)
     - [Stop](#stop)
-2. [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)
+3. [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)
     - [Problems with Minikube on Unix-OS (again)](#problems-with-minikube-on-unix-os-again)
-2. [Remote Setup with Terraform, Ansible and Kubeadm](#remote-setup-with-terraform-ansible-and-kubeadm)
+4. [Remote Setup with Terraform, Ansible and Kubeadm](#remote-setup-with-terraform-ansible-and-kubeadm)
+    - [Prerequisites](#prerequisites)
+    - [Setup](#setup)
+    - [Access browser](#access-browser)
+    - [References](#references)
+
+## Scaffold
+The scaffold consists of a k8-resources, a terraform-local and a terraform-remote directory.
+Each of them contain three namespaces representing the number of environments: `develop`, `staging` and `production`. For the k8-resources, each of the environments contain `.yaml`-files that are divided in frontend and backend resources that can be used to spin up a local cluster (↗︎ [Local Setup with Minikube](#local-setup-with-minikube)) or to be copied into a remote machine to spin up a cluster on a remote machine (↗︎ [Remote Setup with Terraform, Ansible and Kubeadm](#remote-setup-with-terraform-ansible-and-kubeadm)).
+
+However there is also a terraform-local directory that itself holds all three environments and contain each the k8-resources again, just as `.tf`-files in order to spin it up via terraform (↗︎ [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)).
+
+The terraform remote directory so far contains only the develop environment, as the remote approach does not work yet. The remote approach contains `.tf`-files for spinning up the infrastructure and `.yaml`-files for ansible which provision and manage the infrastructure.
 
 ## Local Setup with minikube
 
@@ -48,7 +61,7 @@ You need to run commands with namespace flag accordingly e.g.:
 kubectl apply -f ./postgres.yaml -n <environment>
 ``` 
 
-### Setup
+### Step-by-Step
 
 1. [Download](https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Farm64%2Fstable%2Fbinary+download) minikube and start cluster:
 ``` bash
@@ -161,6 +174,8 @@ kubectl delete [configmap,ingress,service,pod] <name>
 
 ## Local Setup with Terraform and Minikube
 
+This setup is bascially the same as the setup before as it still uses `minikube`, just with terraform to allocate k8-resources at once instead of single-handedly applying resources in a specific order.
+
 Start minikube:
 ``` bash
 minikube start \
@@ -170,8 +185,16 @@ minikube start \
     --addons=ingress
 ```
 
+Create `.env` in `./terraform/<environment>` using the `.env.template`.
+
+Watch apply/creation of pods
+```bash
+watch --exec kubectl get pods --output wide
+```
+
 Spin up terraform:
 ``` bash
+# cd into ./terraform/<environment>
 terraform init
 terraform apply
 ```
@@ -218,7 +241,7 @@ Reapply change:
 terraform apply
 ```
 
-The frontend should now be available from the browser using the `frontend-service-url`
+The frontend should now be available from the browser using the `frontend-service-url` and its respective port.
 
 ### Remote Setup with Terraform, Ansible and Kubeadm
 We followed [this tutorial](https://www.youtube.com/watch?v=Cr6oLkCAwiA) to set up an unmanaged K8-Cluster.
