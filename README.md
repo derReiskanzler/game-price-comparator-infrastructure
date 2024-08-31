@@ -34,7 +34,7 @@ For the Backend:
    - `postgres-secret.yaml.template`: Secrets template for postgres. Requires updating credentials.
    - `backend.yaml`: contains Deployment and Service (LoadBalancer) for Backend service
    - `ingress.yaml`:  contains Ingress for Backend service (Can be ignored as Frontend will take over this responsibility)
-   - `image-checker.yaml`: responsible for checking new images of the Backend
+   - `image-checker.yaml`: responsible for pulling/polling new images and applying them to the infrastructure
 
 ### Preparation
 To use environment variables for Backend you need to use .env.template as a template: 
