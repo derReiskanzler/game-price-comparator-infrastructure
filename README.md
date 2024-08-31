@@ -294,3 +294,31 @@ http://<ip_worker_node>:<target_port_frontend_load_balancer_service>
 ```
 
 As of now the ingress doesnt work, which makes it not possible for the frontend to interact with the backend.
+
+### References
+Articles:
+- [Automating Kubeadm Cluster on EC2: Terraform, Ansible & GitHub Actions](https://medium.com/@chenwingu/automating-kubeadm-cluster-on-ec2-terraform-ansible-github-actions-be847ca8e4a2)
+- [How to Create a Local Kubernetes Cluster: Terraform and Ansible](https://kravensecurity.com/creating-local-kubernetes-cluster/)
+- [Using Terraform & Ansible Together](https://spacelift.io/blog/using-terraform-and-ansible-together)
+
+Videos:
+- [YouTube - K8s on AWS: install kubeadm on EC2 with terraform and ansible](https://www.youtube.com/watch?v=Cr6oLkCAwiA)
+
+
+Relevant for setting up AWS security groups:
+- [Kubernetes Ports and Protocols](https://kubernetes.io/docs/reference/networking/ports-and-protocols/)
+
+Relevant for Ansible Provisioning via Playbook:
+- [Install kubeadm on Cluster](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
+- [Create cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm)
+- [Install Container Runtime on Cluster](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#systemd-cgroup-driver)
+- [How to deploy NGINX Ingress Controller on Kubernetes using kubectl](https://platform9.com/learn/v1.0/tutorials/nginix-controller-via-yaml)
+    - [Nginx Ingress Controller in Kubernetes](https://medium.com/@kayvan.sol2/nginx-ingress-controller-in-kubernetes-3438479fe11c)
+    - [Kubernetes Ingress Controller Installation Guide](https://github.com/kubernetes/ingress-nginx/blob/main/docs/deploy/index.md)
+    - [Using Nginx Ingress Controller in Kubernetes bare-metal setup](https://medium.com/tektutor/using-nginx-ingress-controller-in-kubernetes-bare-metal-setup-890eb4e7772)
+    - [Available Ingress Controllers](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)
+- [Certificate Management with kubeadm](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/)
+
+CI/CD:
+- [Why You Shouldn’t Manage Terraform with Generic CI/CD Tools](https://spacelift.io/blog/terraform-with-generic-ci-cd-tools)
+- [How to Automate Terraform Deployments and Infrastructure Provisioning](https://spacelift.io/blog/terraform-automation)
