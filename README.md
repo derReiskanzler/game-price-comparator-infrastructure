@@ -13,8 +13,9 @@ The Game Price Comparator Infrastructure makes use of docker images published re
     - [Problems with Minikube on Unix-OS (again)](#problems-with-minikube-on-unix-os-again)
 
 ## Scaffold
-The scaffold consists of three namespaces in the root directory representing the number of environments: `develop`, `staging` and `production`. Each of them contain K8-resources that are divided in frontend and backend resources that can be used to spin up a local cluster (↗︎ [Local Setup with Minikube](#local-setup-with-minikube)).
-However there is also a terraform directory that itself holds all three environments and contain each the k8-resources again, just as `.tf`-files to provision it via terraform (↗︎ [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)).
+The scaffold consists of a k8-resources and a terraform directory.
+Each of them contain three namespaces representing the number of environments: `develop`, `staging` and `production`. For the k8-resources, each of the environments contain `.yaml`-files that are divided in frontend and backend resources that can be used to spin up a local cluster (↗︎ [Local Setup with Minikube](#local-setup-with-minikube)).
+However there is also a terraform directory that itself holds all three environments and contain each the k8-resources again, just as `.tf`-files in order to spin it up via terraform (↗︎ [Local Setup with Terraform and Minikube](#local-setup-with-terraform-and-minikube)).
 
 ## Local Setup with minikube
 
