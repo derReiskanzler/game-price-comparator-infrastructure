@@ -2,10 +2,12 @@ apiVersion: 'networking.k8s.io/v1'
 kind: 'Ingress'
 metadata:
   name: be-java-game-price-comparator-develop-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: nginx
   rules:
-    - host: be-java-game-price-comparator.develop.nip.io
+    - host: be-java-game-price-comparator.develop.com
       http:
         paths:
           - pathType: Prefix
@@ -15,3 +17,7 @@ spec:
                 name: be-java-game-price-comparator-develop-service
                 port:
                   number: 80
+  tls:
+    - hosts:
+      - be-java-game-price-comparator.develop.com
+      secretName: letsencrypt-prod
