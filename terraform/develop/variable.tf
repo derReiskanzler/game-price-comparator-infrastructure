@@ -53,13 +53,7 @@ variable "cidr_subnet" {
   default     = "10.0.1.0/24"
 }
 
-# variable "k8s_name" {
-#   type        = string
-#   description = "cluster"
-#   default     = "kubeadm-cluster"
-# }
-
-# x86
+# x86 architecture
 # variable "x86_ubuntu_ami" {
 #   type = string
 #   description = "the x86 AMI ID of our linux instance"
@@ -81,14 +75,3 @@ variable "cidr_subnet" {
 #   default = "t2.medium"
 # }
 
-# variable "availability_zone" {
-#   description = "Availability zone of resources"
-#   default     = "us-east-1a"
-#   type        = string
-# }
-
-# variable "vpc_cidr_block" {
-#   type = string
-#   description = "vpc default cidr block"
-#   default = "10.0.0.0/16"
-# }

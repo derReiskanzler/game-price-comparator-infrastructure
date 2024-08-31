@@ -1,8 +1,6 @@
 - name: Basic Setup
   hosts: all
   gather_facts: false
-  # Problems with sudo password while running the playbook: ansible-playbook -i inventory.yaml playbook.yaml
-  # Run instead: ansible-playbook -i inventory.yaml playbook.yaml --ask-become-pass https://stackoverflow.com/questions/21870083/specify-sudo-password-for-ansible
   become: true # for creating files e.g. config.toml
   # ansible_python_interpreter error: https://stackoverflow.com/questions/64099259/ansible-ansible-python-interpreter-error
   vars:
@@ -166,7 +164,6 @@
 
     # when kubeadm is initialized admin config gets copied into kube config
     - name: Copy kubeconfig to ubuntu user's home
-      # shell: sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
       ansible.builtin.copy:
         src: /etc/kubernetes/admin.conf
         dest: /home/ubuntu/.kube/config

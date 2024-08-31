@@ -190,24 +190,26 @@ To access the Frontend URL locally in the browser, run:
 minikube tunnel
 ```
 
-And add the Frontend URL to `/etc/hosts`:
-```
-127.0.0.1 fe-angular-game-price-comparator.<environment>.nip.io
-```
-
-The Frontend application is then accessible at `fe-angular-game-price-comparator.<environment>.nip.io`.
-
-To be CORS compliant with the Backend, we need to get the URL of the exposed Backend ingress and add it as an environment variable to our Frontend .tf-file:
+To be CORS compliant with the Backend, we need to get the URL of the exposed Frontend load balancer service and add it as an environment variable to our Backend:
 ```bash
 # Get exposed service url of cluster
 minikube service be-java-game-price-comparator-<environment>-service --url
+minikube service fe-angular-game-price-comparator-<environment>-service --url
 ```
 
-Add in `frontend-deployment.tf` file:
+Add in `backend-deployment.tf`:
+```
+env {
+    name  = "FRONTEND_URL"
+    value = "<frontend-service-url>/api"
+}
+```
+
+Same for `frontend-deployment.tf`:
 ```
 env {
     name  = "API_BASE_URL"
-    value = "<service-url>/api"
+    value = "<backend-service-url>/api"
 }
 ```
 
@@ -216,9 +218,14 @@ Reapply change:
 terraform apply
 ```
 
-### Remote Setup with Terraform, Ansible and Kubeadm
+The frontend should now be available from the browser using the `frontend-service-url`
 
+### Remote Setup with Terraform, Ansible and Kubeadm
 We followed [this tutorial](https://www.youtube.com/watch?v=Cr6oLkCAwiA) to set up an unmanaged K8-Cluster.
+
+The setup is on this branch: `feature/refactor-infra-into-cluster-with-ansible`.
+As of now the ingress doesnt work. There is an ingress-nginx-controller installed (see `/terraform/<environment>/playbook.yaml`), but there is still an issue with the configuration.
+
 
 ![](./docs/assets/infrastructure.png)
 <strong>Fig. 1: Architecture diagramm</strong>
@@ -229,16 +236,38 @@ We followed [this tutorial](https://www.youtube.com/watch?v=Cr6oLkCAwiA) to set 
 Make sure you:
 - [install](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) Ansible
 - a ssh key-pair named `operator` in `/terraform/<environment>/.ssh`
+- checkout following branch: `feature/refactor-infra-into-cluster-with-ansible`
 
 #### Setup
 
 Run script to set it up in one go or do it step by step by following the same steps in the script:
 ```bash
-./terraform/<environment>/provision.sh
+cd ./terraform/<environment>
+
+./provision.sh
 ```
 
-Check if you can connect to the control plane:
+The script within contains more details on what exactly is executed.
+
+Try to ssh into the control plane:
 ```bash
 ssh -i .ssh/operator -l ubuntu $(terraform output -raw 'control_plane_ipv4')
 ```
 
+#### Access browser
+```bash
+# Get ip addresses of worker_nodes
+terraform output 'worker_nodes_ipv4'
+# Expected Output:
+# [
+#   "<ip_worker_node_0>",
+#   "<ip_worker_node-1>>",
+# ]
+```
+
+Use any `ip_worker_node` along with the frontend load balancer service target port for http that has been printed in the `provision.sh` script when `kubectl get all --all-namespaces` was executed. Then use to access the frontend in the browser:
+```bash
+http://<ip_worker_node>:<target_port_frontend_load_balancer_service>
+```
+
+As of now the ingress doesnt work, which makes it not possible for the frontend to interact with the backend.
