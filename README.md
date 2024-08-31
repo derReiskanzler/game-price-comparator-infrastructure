@@ -1,6 +1,6 @@
 # Game Price Comparator Infrastructure
 
-The Game Price Comparator Infrastructure makes use of docker images published respectively in the [Backend]((https://github.com/kirdreamer/GamePriceComparator)) and [Frontend](https://github.com/derReiskanzler/fe-angular-game-price-comparator) Repository.
+The Game Price Comparator Infrastructure makes use of docker images published respectively in the [Backend](https://github.com/kirdreamer/GamePriceComparator) and [Frontend](https://github.com/derReiskanzler/fe-angular-game-price-comparator) Repository.
 
 ## Table Of Contents
 1. [Local Setup with Minikube](#local-setup-with-minikube)
